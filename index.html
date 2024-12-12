@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AR Visualization from CSV Data</title>
+    <!-- Including chart.js to create the chart visualization. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- A-Frame Library for AR/3D Scene -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <!-- Import AR.js with marker tracking -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <!-- PapaParse Library for CSV Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <!-- Link to style.css file -->
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>Scientific Data Visualization in AR</h1>
+    <a-scene embedded arjs>
+      <a-assets>
+        <!-- Create an image for the chart texture wrapped as an a-frame asset. Initially use a placeholder image.-->
+        <img id="textureForChart" src="https://placehold.co/600x400" />
+      </a-assets>
+      <!-- Create a canvas for the graph -->
+      <canvas id="2dGraph" style="opacity: 0"></canvas>
+      <a-marker preset="hiro">
+        <!-- Create a plane to display the chart.-->
+        <a-plane
+          src="#textureForChart"
+          position="0 0 0"
+          height="1.5"
+          width="1.5"
+          rotation="-90 0 0"
+        ></a-plane>
+      </a-marker>
+      <!-- Create an ambient light using the color white using hex values. -->
+      <a-light type="ambient" color="#ffffff"></a-light>
+      <!-- Create directional light above the plane. -->
+      <a-light type="directional" intensity="0.25" position="1 1 1"></a-light>
+      <a-entity camera>
+        <a-cursor></a-cursor>
+      </a-entity>
+    </a-scene>
+    <!-- Create javascript script in html. -->
+    <script>
+      // Fetch the CSV file from Glitch
+      fetch("/dielectron.csv")
+        .then((response) => response.text())
+        .then((data) => {
+          // Parse the CSV data using PapaParse
+          Papa.parse(data, {
+            header: true, // Use the first row as headers
+            dynamicTyping: true, // Automatically convert numbers
+            complete: function (results) {
+              // Print the CSV data to the console to check if it’s loading correctly
+              console.warn("CSV Data:", results.data);
+              // Set a canvas element.
+              const ctx = document.getElementById("2dGraph");
+              // Create a labels constant to hold the mapping of the results of the parsed data from Event row heading in the CSV file.
+              const labels = results.data.map((row) => row.Event);
+              // Create a data constant to hold the mapping of the results of the parsed data from M row heading in the CSV file.
+              const invariantMassData = results.data.map((row) => row.M);
+              // Create a new chart.
+              new Chart(ctx, {
+                // It is a bar chart.
+                type: "bar",
+                // Show the data.
+                data: {
+                  // The labels data is from the previously created labels constant which gets the Event row from the CSV file and sets that as the label.
+                  labels: labels,
+                  // Shows the dataset for the bar chart.
+                  datasets: [
+                    {
+                      // Create label for dataset.
+                      label: "Invariant Mass of Two Electrons by Event Number",
+                      // Load data from previously create data constant.
+                      data: invariantMassData,
+                      // Set background color to blue.
+                      backgroundColor: "rgba(0, 145, 255, 0.8)",
+                      // Set border color to green.
+                      borderColor: "rgba(0, 255, 35, 0.8)",
+                      // Set border width to 1.
+                      borderWidth: 1,
+                      // Add hover background color to purple and border color to yellow.
+                      hoverBackgroundColor: "rgba(205, 0, 255, 0.8)",
+                      hoverBorderColor: "rgba(255, 248, 0, 0.8)",
+                    },
+                  ],
+                },
+                options: {
+                  // Make chart responsive.
+                  reponsive: true,
+                  scales: {
+                    y: {
+                      // Have the y-axis start at 0.
+                      beginAtZero: true,
+                      // Create a y-axis title.
+                      title: {
+                        display: true,
+                        text: "Invariant Mass",
+                      },
+                    },
+                    x: {
+                      // Create an x-axis title.
+                      title: {
+                        display: true,
+                        text: "Event number",
+                      },
+                    },
+                  },
+                  animation: {
+                    onComplete: () => {
+                      // Call texture initialize function on canvas.
+                      textureInitialize(ctx);
+                    },
+                  },
+                },
+              });
+            },
+          });
+        })
+        .catch((error) => console.error("Error loading CSV file:", error));
+
+      function textureInitialize(canvas) {
+        // Set image element as textforchart.
+        const imgElement = document.getElementById("textureForChart");
+        // Set image element's src path as the canvas' converted url.
+        imgElement.src = canvas.toDataURL();
+        // Get A-frame scene.
+        const sceneElement = document.querySelector("a-scene");
+        // Create texture from canvas using Three.js library.
+        const texture = new THREE.Texture(canvas);
+        // Update texture with canvas content.
+        texture.needsUpdate = true;
+        // Create material with texture using Three.js library.
+        const material = new THREE.MeshBasicMaterial({ map: texture });
+        // Create plane geometry with size 1 using Three.js library.
+        const geometry = new THREE.PlaneGeometry(1, 1);
+        // Combine to a mesh using Three.js library.
+        const mesh = new THREE.Mesh(geometry, material);
+        // Add mesh to scene.
+        sceneElement.object3D.add(mesh);
+      }
+    </script>
+  </body>
+</html>
